@@ -1,5 +1,5 @@
 import React from "react"
-import type { Metadata, Viewport } from 'next'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 
 import './globals.css'
@@ -14,12 +14,11 @@ export const metadata: Metadata = {
   icons: [
     "https://tse4.mm.bing.net/th/id/OIP.jJUL84nu6YbnpZCdCungEwHaHa?rs=1&pid=ImgDetMain&o=7&rm=3",
   ],
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
   themeColor: '#10b981',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+  },
 }
 
 export default function RootLayout({
