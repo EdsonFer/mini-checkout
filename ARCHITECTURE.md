@@ -57,10 +57,8 @@ features/checkout/
 │   └── formatters.ts
 ├── controllers/
 │   ├── checkout-controller.ts
-│   ├── checkout.form-validity.ts
 │   ├── checkout.initial-state.ts
 │   ├── checkout.pix-comparison.ts
-│   ├── checkout.validation.ts
 │   └── controller.types.ts
 ├── services/
 │   ├── checkout-service.ts

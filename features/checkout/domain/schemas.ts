@@ -5,119 +5,112 @@ function isValidCPFDigits(digits: string): boolean {
 
   let sum = 0;
   for (let i = 0; i < 9; i++) {
-    sum += Number.parseInt(digits[i]) * (10 - i);
+    sum += Number(digits[i]) * (10 - i);
   }
+
   let remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  if (remainder !== Number.parseInt(digits[9])) return false;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== Number(digits[9])) return false;
 
   sum = 0;
   for (let i = 0; i < 10; i++) {
-    sum += Number.parseInt(digits[i]) * (11 - i);
+    sum += Number(digits[i]) * (11 - i);
   }
+
   remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  return remainder === Number.parseInt(digits[10]);
+  if (remainder === 10) remainder = 0;
+
+  return remainder === Number(digits[10]);
 }
 
 function isValidCardNumber(digits: string): boolean {
-  if (digits.length < 13 || digits.length > 19) return false;
-
   let sum = 0;
-  let isEven = false;
+  let even = false;
 
   for (let i = digits.length - 1; i >= 0; i--) {
-    let digit = Number.parseInt(digits[i]);
-    if (isEven) {
-      digit *= 2;
-      if (digit > 9) digit -= 9;
+    let d = Number(digits[i]);
+    if (even) {
+      d *= 2;
+      if (d > 9) d -= 9;
     }
-    sum += digit;
-    isEven = !isEven;
+    sum += d;
+    even = !even;
   }
 
   return sum % 10 === 0;
 }
 
-function isValidExpiry(expiry: string): boolean {
-  const match = expiry.match(/^(\d{2})\/(\d{2})$/);
+function isValidExpiry(value: string): boolean {
+  const match = value.match(/^(\d{2})\/(\d{2})$/);
   if (!match) return false;
 
-  const month = Number.parseInt(match[1]);
-  const year = Number.parseInt(match[2]) + 2000;
-
-  if (month < 1 || month > 12) return false;
+  const month = Number(match[1]);
+  const year = 2000 + Number(match[2]);
 
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  return !(
-    year < currentYear ||
-    (year === currentYear && month < currentMonth)
+  return (
+    month >= 1 &&
+    month <= 12 &&
+    (year > now.getFullYear() ||
+      (year === now.getFullYear() && month >= now.getMonth() + 1))
   );
 }
 
-export const emailSchema = yup
-  .string()
-  .required('E-mail e obrigatorio')
-  .email('E-mail invalido');
+export const checkoutSchema = yup.object({
+  email: yup.string().required('E-mail obrigatório').email('E-mail inválido'),
 
-export const cpfSchema = yup
-  .string()
-  .required('CPF e obrigatorio')
-  .test('cpf-length', 'CPF incompleto', (value) => {
-    const digits = value?.replace(/\D/g, '') || '';
-    return digits.length === 11;
-  })
-  .test('cpf-valid', 'CPF invalido', (value) => {
-    const digits = value?.replace(/\D/g, '') || '';
-    if (digits.length !== 11) return false;
-    return isValidCPFDigits(digits);
-  });
+  cpf: yup
+    .string()
+    .required('CPF obrigatório')
+    .test('cpf-valid', 'CPF inválido', (value) => {
+      const digits = value?.replace(/\D/g, '') || '';
+      return digits.length === 11 && isValidCPFDigits(digits);
+    }),
 
-export const cardNumberSchema = yup
-  .string()
-  .required('Numero do cartao e obrigatorio')
-  .test('card-valid', 'Numero do cartao invalido', (value) => {
-    const digits = value?.replace(/\D/g, '') || '';
-    return isValidCardNumber(digits);
-  });
+  paymentMethod: yup.string().oneOf(['pix', 'card']).required(),
 
-export const cardExpirySchema = yup
-  .string()
-  .required('Validade e obrigatória')
-  .test('expiry-format', 'Formato invalido (MM/AA)', (value) => {
-    return /^\d{2}\/\d{2}$/.test(value || '');
-  })
-  .test('expiry-valid', 'Cartão expirado', (value) => {
-    return isValidExpiry(value || '');
-  });
+  installments: yup
+    .number()
+    .defined()
+    .when('paymentMethod', {
+      is: 'card',
+      then: (schema) => schema.min(1).required(),
+      otherwise: (schema) => schema.default(1),
+    }),
 
-export const cardCvvSchema = yup
-  .string()
-  .required('CVV e obrigatório')
-  .test('cvv-valid', 'CVV invalido', (value) => {
-    const digits = value?.replace(/\D/g, '') || '';
-    return digits.length >= 3 && digits.length <= 4;
-  });
+  card: yup
+    .object({
+      number: yup
+        .string()
+        .required('Número do cartão obrigatório')
+        .test('card-valid', 'Cartão inválido', (value) => {
+          const digits = value?.replace(/\D/g, '') || '';
+          return isValidCardNumber(digits);
+        }),
 
-export const cardHolderSchema = yup
-  .string()
-  .required('Nome e obrigatório')
-  .min(3, 'Nome muito curto');
+      expiry: yup
+        .string()
+        .required('Validade obrigatória')
+        .test('expiry-valid', 'Cartão expirado', isValidExpiry),
 
-export async function validateField(
-  schema: yup.StringSchema,
-  value: string,
-): Promise<string | undefined> {
-  try {
-    await schema.validate(value);
-    return undefined;
-  } catch (err) {
-    if (err instanceof yup.ValidationError) {
-      return err.message;
-    }
-    return 'Erro de validação';
-  }
-}
+      cvv: yup
+        .string()
+        .required('CVV obrigatório')
+        .test('cvv-valid', 'CVV inválido', (value) => {
+          const digits = value?.replace(/\D/g, '') || '';
+          return digits.length >= 3 && digits.length <= 4;
+        }),
+
+      holderName: yup
+        .string()
+        .transform((value) => value?.toUpperCase())
+        .required('Nome do titular é obrigatório')
+        .min(3, 'Nome do titular deve ter no mínimo 3 caracteres'),
+    })
+    .nullable()
+    .when('paymentMethod', {
+      is: 'card',
+      then: (schema) => schema.required(),
+      otherwise: (schema) => schema.strip(),
+    }),
+});

@@ -1,6 +1,12 @@
-export { CheckoutPage } from './components/templates'
+export { CheckoutPage } from './components/templates';
 
-export type { PaymentMethod, Product, FeeCalculation, CheckoutFormData, ValidationResult } from './types'
+export type {
+  PaymentMethod,
+  Product,
+  FeeCalculation,
+  CheckoutFormData,
+  ValidationResult,
+} from './types';
 
 export {
   calculateFees,
@@ -8,18 +14,13 @@ export {
   calculateCardFeePercentage,
   generateInstallmentOptions,
   FEE_RATES,
-} from './domain/fee-calculator'
-
-export { maskCPF, unmaskCPF, maskCardNumber, maskCardExpiry } from './domain/masks'
-
-export { formatCurrency, formatPercentage } from './domain/formatters'
+} from './domain/fee-calculator';
 
 export {
-  emailSchema,
-  cpfSchema,
-  cardNumberSchema,
-  cardExpirySchema,
-  cardCvvSchema,
-  cardHolderSchema,
-  validateField,
-} from './domain/schemas'
+  maskCPF,
+  unmaskCPF,
+  maskCardNumber,
+  maskCardExpiry,
+} from './domain/masks';
+
+export { formatCurrency, formatPercentage } from './domain/formatters';

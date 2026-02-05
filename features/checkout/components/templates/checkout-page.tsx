@@ -1,22 +1,27 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { CheckoutForm, OrderSummary } from '../organisms'
-import { CheckIcon } from '../atoms'
-import { useCheckoutController } from '../../controllers/checkout-controller'
-import { PRODUCT } from '../../data/product'
-import Image from 'next/image'
+import { useState } from 'react';
+import Image from 'next/image';
 
-const pageStyles = 'min-h-screen bg-gradient-to-b from-muted/50 to-background'
-const headerStyles = 'border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10'
-const headerContainerStyles = 'max-w-6xl mx-auto px-4 py-4'
-const logoStyles = 'w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center'
-const mainStyles = 'max-w-6xl mx-auto px-4 py-8'
-const gridStyles = 'grid gap-8 lg:grid-cols-[1fr,400px] lg:gap-12'
-const footerStyles = 'border-t border-border mt-auto'
-const footerContainerStyles = 'max-w-6xl mx-auto px-4 py-6'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+
+import { CheckoutForm, OrderSummary } from '../organisms';
+import { CheckIcon } from '../atoms';
+import { useCheckoutController } from '../../controllers/checkout-controller';
+import { PRODUCT } from '../../data/product';
+
+const pageStyles =
+  'bg-gradient-to-b from-muted/50 to-background flex flex-col min-h-screen';
+const headerStyles = 'border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10';
+const headerContainerStyles = 'max-w-6xl mx-auto px-4 py-4';
+const logoStyles = 'w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center';
+const mainStyles =
+  'w-full px-6 py-8 flex-1 lg:max-w-6xl lg:mx-auto lg:px-4';
+const gridStyles =
+  'grid gap-8 lg:grid-cols-[1fr,400px] lg:gap-12 flex-1 items-stretch';
+const footerStyles = 'border-t border-border mt-auto';
+const footerContainerStyles = 'max-w-6xl mx-auto px-4 py-6';
 
 const successPageStyles = 'min-h-screen bg-gradient-to-b from-emerald-50 to-background flex items-center justify-center p-4'
 const successContainerStyles = 'text-center space-y-4 animate-in fade-in zoom-in duration-500'
@@ -41,18 +46,31 @@ function SuccessView({ onReset }: { onReset: () => void }) {
 
 function HeaderLogo() {
   return (
-    <Image src={'https://tse4.mm.bing.net/th/id/OIP.jJUL84nu6YbnpZCdCungEwHaHa?rs=1&pid=ImgDetMain&o=7&rm=3'}
-      alt='cakto logo' width={32} height={32} />
-  )
+    <Image
+      src="https://tse4.mm.bing.net/th/id/OIP.jJUL84nu6YbnpZCdCungEwHaHa"
+      alt="cakto logo"
+      width={32}
+      height={32}
+    />
+  );
 }
 
 export function CheckoutPage() {
-  const [isSuccess, setIsSuccess] = useState(false)
-  const { formData, errors, isSubmitting, isFormValid, fees, pixComparison, actions } =
-    useCheckoutController(PRODUCT.currentPrice)
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const {
+    form,
+    paymentMethod,
+    installments,
+    fees,
+    isSubmitting,
+    pixComparison,
+    actions,
+  } = useCheckoutController(PRODUCT.currentPrice);
+
 
   if (isSuccess) {
-    return <SuccessView onReset={() => setIsSuccess(false)} />
+    return <SuccessView onReset={() => setIsSuccess(false)} />;
   }
 
   return (
@@ -63,7 +81,7 @@ export function CheckoutPage() {
             <div className={logoStyles}>
               <HeaderLogo />
             </div>
-            <span className="font-semibold text-foreground">Checkout Cakto</span>
+            <span className="font-semibold">Checkout Cakto</span>
           </div>
         </div>
       </header>
@@ -71,28 +89,21 @@ export function CheckoutPage() {
       <main className={mainStyles}>
         <div className={gridStyles}>
           <div className="order-2 lg:order-1">
-            <Card>
-              <CardContent className="p-6">
+            <Card className="h-full">
+              <CardContent className="p-6 flex flex-col h-full">
                 <CheckoutForm
-                  formData={formData}
-                  errors={errors}
+                  form={form}
                   isSubmitting={isSubmitting}
-                  isFormValid={isFormValid}
                   productPrice={PRODUCT.currentPrice}
                   pixSavings={pixComparison.savings}
-                  onEmailChange={actions.setEmail}
-                  onCPFChange={actions.setCPF}
+                  onSubmit={() =>
+                    actions.handleSubmit(PRODUCT, () => setIsSuccess(true))
+                  }
                   onPaymentMethodChange={actions.setPaymentMethod}
-                  onInstallmentsChange={actions.setInstallments}
-                  onCardNumberChange={actions.setCardNumber}
-                  onCardExpiryChange={actions.setCardExpiry}
-                  onCardCvvChange={actions.setCardCvv}
-                  onCardHolderNameChange={actions.setCardHolderName}
-                  onBlur={actions.handleBlur}
-                  onSubmit={() => actions.handleSubmit(PRODUCT, () => setIsSuccess(true))}
                 />
               </CardContent>
             </Card>
+
           </div>
 
           <div className="order-1 lg:order-2">
@@ -104,8 +115,8 @@ export function CheckoutPage() {
                 <OrderSummary
                   product={PRODUCT}
                   fees={fees}
-                  paymentMethod={formData.paymentMethod}
-                  installments={formData.installments}
+                  paymentMethod={paymentMethod}
+                  installments={installments}
                 />
               </CardContent>
             </Card>
@@ -121,5 +132,5 @@ export function CheckoutPage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }

@@ -1,132 +1,152 @@
-import type { FormEvent } from 'react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { FormField, LockIcon, SpinnerIcon } from '../atoms'
-import { PaymentMethodSelector } from './payment-method-selector'
-import { CardForm } from './card-form'
-import type { CheckoutFormProps } from './types'
+import { FormProvider, Controller } from 'react-hook-form';
+import dynamic from 'next/dynamic';
 
-const formStyles = 'space-y-6'
-const fieldsContainerStyles = 'space-y-4'
-const dividerStyles = 'border-t border-border'
-const securityTextStyles = 'text-xs text-muted-foreground text-center flex items-center justify-center gap-1'
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-const buttonStyles = {
-  base: 'w-full h-12 font-semibold text-base',
-  pix: 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500 text-white',
-  card: 'bg-primary hover:bg-primary/90 focus:ring-primary text-primary-foreground',
+import { PaymentMethodSelector } from './payment-method-selector';
+import type { CheckoutFormProps } from './types';
+import { FormField } from '../atoms';
+import { maskCPF } from '../../domain/masks';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const CardFormLazy = dynamic(
+  () =>
+    import('./card-form').then((module) => module.CardForm),
+  {
+    ssr: false,
+    loading: () => <CardFormSkeleton />,
+  }
+);
+
+const submitButtonStyles = {
+  base: 'w-full h-12 font-semibold',
+  pix: 'bg-emerald-500 hover:bg-emerald-600',
+  card: 'bg-primary',
+};
+
+export function CardFormSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Parcelas</label>
+        <Skeleton className="h-11 w-full bg-gray-200" />
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Número do cartão</label>
+        <Skeleton className="h-11 w-full bg-gray-200" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Validade</label>
+          <Skeleton className="h-11 w-full bg-gray-200" />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">CVV</label>
+          <Skeleton className="h-11 w-full bg-gray-200" />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium">Nome no cartão</label>
+        <Skeleton className="h-11 w-full bg-gray-200" />
+      </div>
+    </div>
+  );
 }
 
 export function CheckoutForm({
-  formData,
-  errors,
+  form,
   isSubmitting,
-  isFormValid,
   productPrice,
   pixSavings,
-  onEmailChange,
-  onCPFChange,
-  onPaymentMethodChange,
-  onInstallmentsChange,
-  onCardNumberChange,
-  onCardExpiryChange,
-  onCardCvvChange,
-  onCardHolderNameChange,
-  onBlur,
   onSubmit,
+  onPaymentMethodChange,
 }: CheckoutFormProps) {
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    onSubmit()
-  }
+  const {
+    register,
+    setValue,
+    formState: { errors },
+  } = form;
 
-  const buttonClassName = cn(
-    buttonStyles.base,
-    formData.paymentMethod === 'pix' ? buttonStyles.pix : buttonStyles.card
-  )
+  const paymentMethod = form.watch('paymentMethod');
 
-  const isCardPayment = formData.paymentMethod === 'card'
-  const showCardForm = isCardPayment && formData.card
+  const handleSubmit: React.ComponentProps<'form'>['onSubmit'] = (e) => {
+    e.preventDefault();
+    onSubmit();
+  };
 
   return (
-    <form onSubmit={handleSubmit} className={formStyles} noValidate>
-      <h2 className="text-xl font-semibold text-foreground">Informacoes de pagamento</h2>
+    <FormProvider {...form}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 h-full">
+        <h2 className="text-xl font-semibold">Informações de pagamento</h2>
 
-      <div className={fieldsContainerStyles}>
         <FormField
           label="E-mail"
-          id="email"
           type="email"
-          value={formData.email}
-          onChange={(e) => onEmailChange(e.target.value)}
-          onBlur={() => onBlur('email')}
-          error={errors.email}
           placeholder="seu@email.com"
           autoComplete="email"
+          error={errors.email?.message}
+          {...register('email')}
         />
 
         <FormField
           label="CPF"
-          id="cpf"
-          value={formData.cpf}
-          onChange={(e) => onCPFChange(e.target.value)}
-          onBlur={() => onBlur('cpf')}
-          error={errors.cpf}
           placeholder="000.000.000-00"
           inputMode="numeric"
           maxLength={14}
+          error={errors.cpf?.message}
+          {...register('cpf')}
+          onChange={(e) => {
+            const value = maskCPF(e.target.value);
+            setValue('cpf', value, {
+              shouldDirty: true,
+            });
+          }}
         />
-      </div>
 
-      <div className={dividerStyles} />
 
-      <PaymentMethodSelector
-        value={formData.paymentMethod}
-        onChange={onPaymentMethodChange}
-        pixSavings={pixSavings}
-      />
+        <Controller
+          control={form.control}
+          name="paymentMethod"
+          defaultValue="pix"
+          render={({ field }) => (
+            <PaymentMethodSelector
+              value={field.value}
+              onChange={(method) => {
+                field.onChange(method);
 
-      {showCardForm && formData.card && (
-        <CardForm
-          cardNumber={formData.card.number}
-          cardExpiry={formData.card.expiry}
-          cardCvv={formData.card.cvv}
-          cardHolderName={formData.card.holderName}
-          installments={formData.installments}
-          productPrice={productPrice}
-          errors={errors}
-          onCardNumberChange={onCardNumberChange}
-          onCardExpiryChange={onCardExpiryChange}
-          onCardCvvChange={onCardCvvChange}
-          onCardHolderNameChange={onCardHolderNameChange}
-          onInstallmentsChange={onInstallmentsChange}
-          onBlur={onBlur}
+                if (method === 'card') {
+                  import('./card-form');
+                }
+
+                onPaymentMethodChange(method);
+              }}
+              pixSavings={pixSavings}
+            />
+          )}
         />
-      )}
 
-      <Button
-        type="submit"
-        disabled={isSubmitting || !isFormValid}
-        className={buttonClassName}
-        aria-busy={isSubmitting}
-      >
-        {isSubmitting ? (
-          <span className="flex items-center justify-center gap-2">
-            <SpinnerIcon />
-            Processando...
-          </span>
-        ) : (
-          <>
-            Finalizar Compra
-            {formData.paymentMethod === 'pix' && <span className="ml-2 text-emerald-100">via PIX</span>}
-          </>
+        {paymentMethod === 'card' && (
+          <CardFormLazy productPrice={productPrice} />
         )}
-      </Button>
 
-      <p className={securityTextStyles}>
-        <LockIcon />
-        Pagamento 100% seguro. Seus dados estao protegidos.
-      </p>
-    </form>
-  )
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className={cn(
+            submitButtonStyles.base,
+            paymentMethod === 'pix'
+              ? submitButtonStyles.pix
+              : submitButtonStyles.card
+          )}
+        >
+          {isSubmitting ? 'Processando...' : 'Finalizar compra'}
+        </Button>
+      </form>
+    </FormProvider>
+  );
 }

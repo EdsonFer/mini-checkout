@@ -43,7 +43,7 @@ export function OrderSummary({ product, fees, paymentMethod, installments }: Ord
         {discount > 0 && (
           <>
             <PriceLine
-              label="Preco original"
+              label="Preço original"
               value={formatCurrency(product.originalPrice)}
               variant="strikethrough"
             />
@@ -87,7 +87,7 @@ export function OrderSummary({ product, fees, paymentMethod, installments }: Ord
           </div>
         </div>
 
-        {paymentMethod === 'pix' && fees.pixSavings > 0 && (
+        {paymentMethod === 'pix' && (
           <div className={savingsBoxStyles}>
             <CheckCircleIcon className="text-emerald-600 flex-shrink-0" />
             <span className="text-sm text-emerald-700 font-medium">

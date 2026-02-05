@@ -1,193 +1,95 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 
-import type {
-  CheckoutFormData,
-  PaymentMethod,
-  FormErrors,
-  Product,
-} from '../types';
+import type { CheckoutFormData, PaymentMethod, Product } from '../types';
 
 import { initialFormData } from './checkout.initial-state';
-import { validateTouchedFields } from './checkout.validation';
-
-import { maskCPF, maskCardNumber, maskCardExpiry } from '../domain/masks';
 import { calculateFees } from '../domain/fee-calculator';
-import { submitPayment } from '../services/checkout-service';
-import { CheckoutController } from './controller.types';
-import { isCheckoutFormValid } from './checkout.form-validity';
 import { calculatePixComparison } from './checkout.pix-comparison';
+import { submitPayment } from '../services/checkout-service';
+import type { CheckoutController } from './controller.types';
+import { checkoutSchema } from '../domain/schemas';
 
 export function useCheckoutController(
   productPrice: number,
 ): CheckoutController {
-  const [formData, setFormData] = useState<CheckoutFormData>(initialFormData);
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validate = useCallback(
-    async (data: CheckoutFormData, touchedFields: Record<string, boolean>) => {
-      const validationErrors = await validateTouchedFields(data, touchedFields);
-      setErrors(validationErrors);
-    },
-    [],
-  );
+  const form = useForm<CheckoutFormData>({
+    resolver: yupResolver(checkoutSchema),
+    defaultValues: initialFormData,
+    mode: 'onBlur',
+    reValidateMode: 'onSubmit',
+    shouldUnregister: true,
+  });
 
-  const isFormValid = useMemo(
-    () => isCheckoutFormValid(formData, errors),
-    [formData, errors],
-  );
+  const paymentMethod = useWatch({
+    control: form.control,
+    name: 'paymentMethod',
+    defaultValue: 'pix',
+  });
+
+  const installments = useWatch({
+    control: form.control,
+    name: 'installments',
+    defaultValue: 1,
+  });
 
   const fees = useMemo(
-    () =>
-      calculateFees(
-        productPrice,
-        formData.paymentMethod,
-        formData.installments,
-      ),
-    [productPrice, formData.paymentMethod, formData.installments],
+    () => calculateFees(productPrice, paymentMethod, installments),
+    [productPrice, paymentMethod, installments],
   );
 
   const pixComparison = useMemo(
-    () => calculatePixComparison(productPrice, formData.installments),
-    [productPrice, formData.installments],
+    () => calculatePixComparison(productPrice, installments),
+    [productPrice, installments],
   );
 
-  const setEmail = useCallback(
-    (value: string) => {
-      const next = { ...formData, email: value };
-      setFormData(next);
-      validate(next, touched);
+  const handlePaymentMethodChange = useCallback(
+    (method: PaymentMethod) => {
+      form.setValue('paymentMethod', method, { shouldDirty: true });
+
+      if (method === 'card') {
+        form.setValue('installments', 1, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
     },
-    [formData, touched, validate],
-  );
-
-  const setCPF = useCallback(
-    (value: string) => {
-      const next = { ...formData, cpf: maskCPF(value) };
-      setFormData(next);
-      validate(next, touched);
-    },
-    [formData, touched, validate],
-  );
-
-  const setPaymentMethod = useCallback((method: PaymentMethod) => {
-    setFormData((prev) => ({
-      ...prev,
-      paymentMethod: method,
-      installments: method === 'pix' ? 1 : prev.installments,
-    }));
-  }, []);
-
-  const setInstallments = useCallback((value: number) => {
-    setFormData((prev) => ({ ...prev, installments: value }));
-  }, []);
-
-  const setCardNumber = useCallback(
-    (value: string) => {
-      const next = {
-        ...formData,
-        card: { ...formData.card!, number: maskCardNumber(value) },
-      };
-      setFormData(next);
-      validate(next, touched);
-    },
-    [formData, touched, validate],
-  );
-
-  const setCardExpiry = useCallback(
-    (value: string) => {
-      const next = {
-        ...formData,
-        card: { ...formData.card!, expiry: maskCardExpiry(value) },
-      };
-      setFormData(next);
-      validate(next, touched);
-    },
-    [formData, touched, validate],
-  );
-
-  const setCardCvv = useCallback(
-    (value: string) => {
-      const digits = value.replace(/\D/g, '').slice(0, 4);
-      const next = {
-        ...formData,
-        card: { ...formData.card!, cvv: digits },
-      };
-      setFormData(next);
-      validate(next, touched);
-    },
-    [formData, touched, validate],
-  );
-
-  const setCardHolderName = useCallback(
-    (value: string) => {
-      const next = {
-        ...formData,
-        card: { ...formData.card!, holderName: value.toUpperCase() },
-      };
-      setFormData(next);
-      validate(next, touched);
-    },
-    [formData, touched, validate],
-  );
-
-  const handleBlur = useCallback(
-    (field: string) => {
-      const nextTouched = { ...touched, [field]: true };
-      setTouched(nextTouched);
-      validate(formData, nextTouched);
-    },
-    [touched, formData, validate],
+    [form],
   );
 
   const handleSubmit = useCallback(
     async (product: Product, onSuccess: () => void) => {
-      const allTouched = {
-        email: true,
-        cpf: true,
-        cardNumber: true,
-        cardExpiry: true,
-        cardCvv: true,
-        cardHolderName: true,
-      };
-
-      setTouched(allTouched);
-      await validate(formData, allTouched);
-
-      if (!isFormValid) return;
+      const isValid = await form.trigger();
+      if (!isValid) return;
 
       setIsSubmitting(true);
-      const result = await submitPayment(formData, product, fees);
+      const data = form.getValues();
+      const result = await submitPayment(data, product, fees);
       setIsSubmitting(false);
 
       if (result.success) {
         onSuccess();
+        form.reset(initialFormData);
       }
     },
-    [formData, isFormValid, fees, validate],
+    [form, fees],
   );
 
   return {
-    formData,
-    errors,
-    touched,
+    form,
+    paymentMethod,
+    installments,
     isSubmitting,
-    isFormValid,
     fees,
     pixComparison,
     actions: {
-      setEmail,
-      setCPF,
-      setPaymentMethod,
-      setInstallments,
-      setCardNumber,
-      setCardExpiry,
-      setCardCvv,
-      setCardHolderName,
-      handleBlur,
+      setPaymentMethod: handlePaymentMethodChange,
       handleSubmit,
     },
   };

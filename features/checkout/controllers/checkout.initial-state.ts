@@ -5,10 +5,5 @@ export const initialFormData: CheckoutFormData = {
   cpf: '',
   paymentMethod: 'pix',
   installments: 1,
-  card: {
-    number: '',
-    expiry: '',
-    cvv: '',
-    holderName: '',
-  },
+  card: null,
 };

@@ -21,7 +21,7 @@ export function PaymentMethodSelector({ value, onChange, pixSavings }: PaymentMe
   return (
     <fieldset className="space-y-3">
       <legend className="block text-sm font-medium text-foreground mb-3">Forma de pagamento</legend>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr items-stretch">
         <PaymentOption
           selected={value === 'pix'}
           onClick={() => onChange('pix')}
@@ -42,7 +42,7 @@ export function PaymentMethodSelector({ value, onChange, pixSavings }: PaymentMe
           onClick={() => onChange('card')}
           icon={<CardIcon className={cardIconClassName} />}
           title="Cartão de Credito"
-          subtitle="Ate 12x com juros"
+          subtitle="Parcele em até 12x"
           badgeVariant="default"
         />
       </div>
